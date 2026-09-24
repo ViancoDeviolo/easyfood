@@ -1,0 +1,72 @@
+### Requisições de exemplo — extensão "REST Client" do VS Code
+### Clique em "Send Request" acima de cada bloco.
+
+@base = http://localhost:3000
+
+### Saúde da API e do banco
+GET {{base}}/health
+
+### Listar restaurantes (público)
+GET {{base}}/restaurants?category=pizza&page=1&limit=10
+
+### Cadastro
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Lucas",
+  "email": "lucas@easyfood.com",
+  "password": "123456"
+}
+
+### Login (copie o token da resposta)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "cliente@easyfood.com",
+  "password": "easyfood123"
+}
+
+### Token capturado automaticamente do login acima
+@token = {{login.response.body.token}}
+
+### Quem sou eu
+GET {{base}}/auth/me
+Authorization: Bearer {{token}}
+
+### Cardápio do restaurante 1
+GET {{base}}/restaurants/1/menu
+
+### Fazer pedido
+POST {{base}}/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "restaurantId": 1,
+  "deliveryAddress": "Rua das Flores, 123 - Centro",
+  "notes": "Sem cebola",
+  "items": [
+    { "menuItemId": 1, "quantity": 2 },
+    { "menuItemId": 4, "quantity": 1 }
+  ]
+}
+
+### Meus pedidos
+GET {{base}}/orders
+Authorization: Bearer {{token}}
+
+### Cancelar pedido 1 (cliente só cancela enquanto está PENDENTE)
+PATCH {{base}}/orders/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "CANCELADO" }
+
+### Cadastrar restaurante sem token -> 401
+POST {{base}}/restaurants
+Content-Type: application/json
+
+{ "name": "Sem token", "category": "Teste" }

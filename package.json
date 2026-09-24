@@ -1,0 +1,39 @@
+{
+  "name": "easyfood",
+  "version": "1.0.0",
+  "description": "EasyFood — API de delivery de comida (réplica simplificada do iFood) com Node.js, Express e Oracle Database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "start:memory": "node server.js --memory",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "test": "node --test --test-concurrency=1 --test-reporter=spec \"tests/**/*.test.js\""
+  },
+  "keywords": [
+    "easyfood",
+    "express",
+    "oracle",
+    "oracledb",
+    "jwt",
+    "software-architecture"
+  ],
+  "author": "Lucas (ViancoDeviolo)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "oracledb": "^7.0.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4"
+  }
+}
