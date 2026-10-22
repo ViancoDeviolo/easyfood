@@ -9,6 +9,9 @@ RUN npm ci --omit=dev
 
 COPY . .
 
+# Pasta das fotos (montada como volume no docker-compose); o usuário "node" precisa escrever nela
+RUN mkdir -p /app/storage && chown node:node /app/storage
+
 EXPOSE 3000
 USER node
 CMD ["node", "server.js"]

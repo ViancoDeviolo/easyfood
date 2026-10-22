@@ -8,7 +8,7 @@ Clientes encontram restaurantes, montam a sacola e acompanham o pedido. Donos de
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express)
 ![Oracle](https://img.shields.io/badge/Oracle_AI_Database-26ai-F80000?logo=oracle&logoColor=white)
 ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens)
-![Tests](https://img.shields.io/badge/testes-42_passando-brightgreen)
+![Tests](https://img.shields.io/badge/testes-58_passando-brightgreen)
 
 ## Stack
 
@@ -20,6 +20,7 @@ Clientes encontram restaurantes, montam a sacola e acompanham o pedido. Donos de
 | Autenticação | JWT (`jsonwebtoken`) + senhas com hash `bcryptjs` |
 | Interface | HTML, CSS e JavaScript puro (servidos pela própria API) |
 | Testes | `node:test` + `supertest` |
+| Imagens | Função serverless `optimize-image` com `sharp` (800 px, WebP) disparada por evento do storage |
 | Infra | Docker Compose + GitHub Actions |
 
 ## Como rodar
@@ -67,6 +68,7 @@ Detalhes, SQL Developer, consultas úteis e Oracle na nuvem: **[docs/oracle.md](
 - Cardápio por restaurante, com disponibilidade de cada item.
 - Pedidos: preço e total calculados no servidor, pedido e itens gravados numa única transação no Oracle, ciclo de vida `PENDENTE → CONFIRMADO → EM_PREPARO → SAIU_PARA_ENTREGA → ENTREGUE` (ou `CANCELADO`).
 - Interface web com área do cliente e painel do dono do restaurante.
+- Foto de perfil do restaurante: a API recebe o arquivo e responde `202`; uma função serverless redimensiona e comprime a imagem em segundo plano (de ~12 MB para centenas de KB).
 - `/health` indica se o banco está disponível; a API responde `503` quando o Oracle está fora.
 
 Referência completa dos endpoints: **[docs/api.md](docs/api.md)** · requisições prontas: [docs/easyfood.http](docs/easyfood.http)
@@ -82,11 +84,13 @@ Requisição → routes → controller → service → repository → Oracle Dat
 
 ```
 easyfood/
-├── adrs/                      # decisões arquiteturais (ADR-001 a ADR-006)
+├── adrs/                      # decisões arquiteturais (ADR-001 a ADR-007)
 ├── database/
-│   ├── migrations/            # schema Oracle versionado (001_ ... 004_)
+│   ├── migrations/            # schema Oracle versionado (001_ ... 005_)
 │   └── setup/                 # criação manual do usuário (sem Docker)
 ├── docs/                      # C4, modelo de dados, API, guia do Oracle
+├── functions/
+│   └── optimize-image/        # função serverless (FaaS): redimensiona e comprime fotos
 ├── public/                    # interface web
 ├── scripts/                   # migrate.js e seed.js
 ├── src/
@@ -100,9 +104,9 @@ easyfood/
 │   │   ├── restaurants/
 │   │   ├── menu/
 │   │   └── orders/            # + order-status.js (máquina de estados)
-│   ├── shared/                # erros de aplicação, validação, error handler
+│   ├── shared/                # erros, validação, error handler, storage e runtime local de funções
 │   └── app.js                 # composition root
-├── tests/                     # 42 testes automatizados
+├── tests/                     # 58 testes automatizados
 ├── .github/workflows/ci.yml   # testes + integração real com Oracle
 ├── docker-compose.yml
 ├── Dockerfile
@@ -121,6 +125,7 @@ Diagramas C4, modelo entidade-relacionamento, fluxo do pedido e padrões de proj
 | [004](adrs/ADR-004-monolito-modular-em-camadas.md) | Monólito modular em camadas |
 | [005](adrs/ADR-005-autenticacao-jwt.md) | Autenticação com JWT |
 | [006](adrs/ADR-006-comunicacao-sincrona.md) | Sem arquitetura orientada a eventos por enquanto |
+| [007](adrs/ADR-007-processamento-de-imagens-serverless.md) | Fotos processadas por função serverless disparada pelo storage |
 
 ## Testes
 
@@ -128,7 +133,7 @@ Diagramas C4, modelo entidade-relacionamento, fluxo do pedido e padrões de proj
 npm test
 ```
 
-Os testes sobem a API com os repositories em memória e cobrem autenticação, permissões de dono, validações, cálculo do pedido, ciclo de status e tradução de erros do Oracle.
+Os testes sobem a API com os repositories em memória e cobrem autenticação, permissões de dono, validações, cálculo do pedido, ciclo de status, tradução de erros do Oracle e o fluxo completo das fotos (função, status assíncrono, tipos e tamanhos inválidos, substituição e limpeza de arquivos).
 No GitHub Actions, um segundo job sobe um **Oracle real** em container, roda as migrations duas vezes (para provar que são idempotentes), o seed e um teste de fumaça da API.
 
 ## Evolução do projeto
@@ -142,6 +147,7 @@ No GitHub Actions, um segundo job sobe um **Oracle real** em container, roda as 
 | Atividade 5 | Autenticação JWT e rotas protegidas (ADR-005) |
 | Aula 6 | Avaliação de event-driven, decisão de não adotar agora (ADR-006) |
 | Evolução | Cardápio, pedidos com transação, interface web, Docker e CI |
+| Aula 8 | Foto do restaurante com função serverless e processamento assíncrono (ADR-007) |
 
 ---
 

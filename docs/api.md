@@ -24,6 +24,26 @@ Erros seguem sempre o formato `{ "error": "mensagem", "details": ["..."] }` (`de
 | PATCH 🔒 | `/restaurants/:id` | Alteração parcial (somente o dono) | `200` |
 | DELETE 🔒 | `/restaurants/:id` | Remoção (somente o dono; bloqueada se já houver pedidos) | `204` |
 
+## Foto do restaurante
+
+| Método | Rota | Descrição | Sucesso |
+|---|---|---|---|
+| PUT 🔒 | `/restaurants/:id/image` | Envia a foto (somente o dono). Corpo = bytes do arquivo, JPEG/PNG/WebP até 15 MB. O processamento é assíncrono | `202 { "imageStatus": "PROCESSANDO" }` |
+| GET | `/restaurants/:id/image/status` | `NENHUMA`, `PROCESSANDO`, `PRONTA` ou `ERRO` | `200` |
+| GET | `/restaurants/:id/image` | Foto otimizada (WebP, até 800 px). `404` enquanto não estiver pronta | `200 image/webp` |
+| DELETE 🔒 | `/restaurants/:id/image` | Remove a foto (somente o dono) | `204` |
+
+Os restaurantes trazem `imageStatus` e `imageUrl` (preenchido quando a foto está pronta).
+
+Exemplo com `curl`:
+
+```bash
+curl -X PUT http://localhost:3000/restaurants/1/image \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: image/jpeg" \
+  --data-binary @foto.jpg
+```
+
 ## Cardápio
 
 | Método | Rota | Descrição | Sucesso |
@@ -53,11 +73,14 @@ Erros seguem sempre o formato `{ "error": "mensagem", "details": ["..."] }` (`de
 
 | Código | Quando |
 |---|---|
+| 202 | Recebido; o processamento termina depois (upload de foto) |
 | 400 | Dados inválidos ou JSON malformado |
 | 401 | Sem token, token inválido/expirado, credenciais erradas |
 | 403 | Autenticado, mas sem permissão (não é o dono / não é o cliente) |
 | 404 | Recurso ou rota inexistente |
 | 409 | Conflito: e-mail duplicado, item indisponível, transição de status inválida, remoção bloqueada |
+| 413 | Arquivo maior que o limite (15 MB) |
+| 415 | Arquivo não é JPEG, PNG nem WebP (conferido pelos bytes, não pelo nome) |
 | 503 | Banco de dados indisponível |
 
 Exemplos prontos para executar: [`easyfood.http`](easyfood.http) (extensão *REST Client* do VS Code).

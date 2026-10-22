@@ -1,4 +1,6 @@
 node_modules/
+# Fotos enviadas pelos restaurantes (dados, não código)
+storage/
 .env
 *.log
 coverage/

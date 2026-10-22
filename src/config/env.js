@@ -17,6 +17,10 @@ const env = {
     ? "memory"
     : (process.env.DB_CLIENT || "oracle").toLowerCase(),
 
+  // Pasta onde ficam as fotos (originals/ e optimized/). Em produção: Object Storage.
+  storageDir: process.env.STORAGE_DIR || "storage",
+  imageMaxBytes: toInt(process.env.IMAGE_MAX_MB, 15) * 1024 * 1024,
+
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || "1d"

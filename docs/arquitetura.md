@@ -29,14 +29,46 @@ flowchart LR
         web["Interface Web<br/>[HTML, CSS, JavaScript]<br/>public/"]
         api["API EasyFood<br/>[Node.js, Express]<br/>REST + JWT"]
         db[("Oracle Database<br/>[26ai Free / Autonomous DB]<br/>usuários, restaurantes,<br/>cardápio, pedidos")]
+        storage[("Storage de arquivos<br/>[disco local / Object Storage]<br/>originals/ e optimized/")]
+        fn["Função optimize-image<br/>[Serverless / FaaS, sharp]<br/>redimensiona e comprime"]
     end
 
     user -- "HTTPS" --> web
     web -- "JSON / HTTP<br/>Authorization: Bearer" --> api
     api -- "SQL via oracledb<br/>(pool de conexões, TCP 1521)" --> db
+    api -- "grava foto original" --> storage
+    storage -. "evento object.created" .-> fn
+    fn -- "grava foto otimizada" --> storage
+    fn -. "resultado → image_status" .-> api
 ```
 
-A interface é servida pela própria API (`express.static`), então em produção existe um único processo Node.js.
+A interface é servida pela própria API (`express.static`). A EasyFood continua sendo **um monólito modular**; a única peça fora dele é a função de imagens ([ADR-007](../adrs/ADR-007-processamento-de-imagens-serverless.md)). Localmente, a função roda no mesmo processo, disparada pelo runtime em `src/shared/functions/`; em produção ela seria publicada no OCI Functions ou AWS Lambda.
+
+### Fluxo da foto do restaurante (processamento assíncrono)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant D as Dono (browser)
+    participant A as API EasyFood
+    participant DB as Oracle
+    participant S as Storage
+    participant F as Função optimize-image
+
+    D->>A: PUT /restaurants/1/image (bytes da foto)
+    A->>A: confere dono, tamanho e formato (magic bytes)
+    A->>DB: image_status = PROCESSANDO
+    A->>S: grava originals/<id>.jpg
+    A-->>D: 202 Accepted { PROCESSANDO }
+    S-)F: evento object.created
+    F->>S: lê o original
+    F->>F: resize 800 px + WebP q80
+    F->>S: grava optimized/<id>.webp
+    F-)A: resultado
+    A->>DB: image_status = PRONTA
+    D->>A: GET /restaurants/1/image/status
+    A-->>D: PRONTA → exibe a foto
+```
 
 ## Nível 3 — Componentes da API
 
@@ -141,6 +173,8 @@ erDiagram
         VARCHAR2 description
         NUMBER rating "2,1 - CHECK 0..5"
         NUMBER delivery_fee "8,2 - CHECK >= 0"
+        VARCHAR2 image_id "UUID da foto no storage"
+        VARCHAR2 image_status "NENHUMA, PROCESSANDO, PRONTA, ERRO"
     }
     MENU_ITEMS {
         NUMBER id PK "IDENTITY"
@@ -201,3 +235,5 @@ As transições ficam em `src/modules/orders/order-status.js`. A atualização n
 | **State Machine** | `order-status.js` | Controlar transições válidas do pedido |
 | **Unit of Work** (via transação) | `withTransaction()` em `oracle.js` | Pedido + itens gravados atomicamente |
 | **Object Pool** | pool do `oracledb` | Reaproveitar conexões com o banco |
+| **Serverless / FaaS** | `functions/optimize-image/` | Executar o processamento pesado de imagens sob demanda, fora da API |
+| **Observer (evento)** | `storage.on("object.created")` + runtime local | O storage avisa que chegou um arquivo; a função reage sem a API chamá-la diretamente |

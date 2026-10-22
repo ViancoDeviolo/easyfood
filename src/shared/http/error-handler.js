@@ -15,6 +15,11 @@ function errorHandler(err, req, res, next) {
     return res.status(err.statusCode).json(body);
   }
 
+  // Corpo maior que o limite configurado (ex.: foto acima de 15 MB)
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ error: "Arquivo maior que o permitido" });
+  }
+
   // JSON malformado no corpo da requisição
   if (err.type === "entity.parse.failed") {
     return res.status(400).json({ error: "JSON inválido no corpo da requisição" });

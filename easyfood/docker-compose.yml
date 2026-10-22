@@ -1,0 +1,51 @@
+# EasyFood — ambiente completo: Oracle AI Database 26ai Free + API
+#
+#   docker compose up -d oracle     -> sobe só o banco (para rodar a API com npm start)
+#   docker compose up --build       -> sobe banco + API (migrations e seed automáticos)
+#   docker compose down -v          -> derruba tudo e apaga os dados
+#
+# Na primeira execução o download da imagem do Oracle pode levar alguns minutos.
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    container_name: easyfood-oracle
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_ADMIN_PASSWORD:-EasyFoodAdmin_2026}
+      APP_USER: ${ORACLE_USER:-easyfood}
+      APP_USER_PASSWORD: ${ORACLE_PASSWORD:-EasyFood_2026}
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  api:
+    build: .
+    container_name: easyfood-api
+    depends_on:
+      oracle:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DB_CLIENT: oracle
+      ORACLE_USER: ${ORACLE_USER:-easyfood}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-EasyFood_2026}
+      ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
+      JWT_SECRET: ${JWT_SECRET:-troque-esta-chave-em-producao-por-uma-bem-longa}
+      JWT_EXPIRES_IN: 1d
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage-data:/app/storage
+    command: sh -c "npm run db:migrate && npm run db:seed && node server.js"
+
+volumes:
+  oracle-data:
+  storage-data:

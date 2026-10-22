@@ -1,5 +1,7 @@
 // Repository de restaurantes — implementação em memória.
 
+const { IMAGE_STATUS, restaurantImageUrl } = require("./restaurant-image.constants");
+
 function createMemoryRestaurantRepository() {
   const restaurants = [];
   let nextId = 1;
@@ -37,6 +39,8 @@ function createMemoryRestaurantRepository() {
       description: data.description ?? null,
       rating: data.rating,
       deliveryFee: data.deliveryFee,
+      imageId: null,
+      imageStatus: IMAGE_STATUS.NENHUMA,
       createdAt: now,
       updatedAt: now
     };
@@ -62,11 +66,40 @@ function createMemoryRestaurantRepository() {
     return true;
   }
 
-  return { findAll, findCategories, findById, create, update, remove };
+  async function findImage(id) {
+    const restaurant = restaurants.find((item) => item.id === id);
+    return restaurant ? { imageId: restaurant.imageId, imageStatus: restaurant.imageStatus } : null;
+  }
+
+  async function setImage(id, { imageId, imageStatus }) {
+    const restaurant = restaurants.find((item) => item.id === id);
+    if (restaurant) Object.assign(restaurant, { imageId, imageStatus });
+  }
+
+  async function updateImageStatus(imageId, imageStatus) {
+    const restaurant = restaurants.find((item) => item.imageId === imageId);
+    if (!restaurant) return false;
+    restaurant.imageStatus = imageStatus;
+    return true;
+  }
+
+  return {
+    findAll,
+    findCategories,
+    findById,
+    create,
+    update,
+    remove,
+    findImage,
+    setImage,
+    updateImageStatus
+  };
 }
 
+// Mesmo formato público da versão Oracle: imageId fica interno, a API vê imageStatus e imageUrl
 function clone(restaurant) {
-  return { ...restaurant };
+  const { imageId, ...publicData } = restaurant;
+  return { ...publicData, imageUrl: restaurantImageUrl(restaurant.id, imageId, restaurant.imageStatus) };
 }
 
 module.exports = { createMemoryRestaurantRepository };

@@ -1,14 +1,25 @@
 // Utilitários de teste: sobe a aplicação com os repositories em memória.
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const request = require("supertest");
+const { createLocalStorage } = require("../src/shared/storage/local-storage");
 const { createApp } = require("../src/app");
 const { createRepositories } = require("../src/database/repositories");
 
 const JWT = { secret: "segredo-de-teste-com-mais-de-16-caracteres", expiresIn: "1h" };
 
-function buildTestApp() {
+// Cada app de teste usa uma pasta temporária própria, apagada no fim da execução
+const tempDirs = [];
+process.on("exit", () => tempDirs.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
+
+function buildTestApp({ imageMaxBytes } = {}) {
   const repositories = createRepositories("memory");
-  const app = createApp({ repositories, jwt: JWT });
-  return { app, repositories, api: request(app) };
+  const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), "easyfood-test-"));
+  tempDirs.push(storageDir);
+  const storage = createLocalStorage({ rootDir: storageDir });
+  const app = createApp({ repositories, jwt: JWT, storage, imageMaxBytes });
+  return { app, repositories, storage, storageDir, api: request(app) };
 }
 
 let counter = 0;

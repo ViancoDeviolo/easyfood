@@ -4,6 +4,7 @@ const { env, validateEnv } = require("./src/config/env");
 const { createRepositories } = require("./src/database/repositories");
 const { createApp } = require("./src/app");
 const { seed } = require("./src/database/seed");
+const { createLocalStorage } = require("./src/shared/storage/local-storage");
 
 async function start() {
   validateEnv();
@@ -11,7 +12,8 @@ async function start() {
   const repositories = createRepositories(env.dbClient);
   await repositories.connect();
 
-  const app = createApp({ repositories, jwt: env.jwt });
+  const storage = createLocalStorage({ rootDir: env.storageDir });
+  const app = createApp({ repositories, jwt: env.jwt, storage, imageMaxBytes: env.imageMaxBytes });
 
   // No modo memória o banco nasce vazio a cada execução; carregamos a demonstração automaticamente.
   if (repositories.client === "memory") {
@@ -26,6 +28,7 @@ async function start() {
   const shutdown = (signal) => {
     console.log(`${signal} recebido, encerrando...`);
     server.close(async () => {
+      await app.locals.functionRuntime.drain(); // termina as imagens em processamento
       await repositories.close();
       process.exit(0);
     });

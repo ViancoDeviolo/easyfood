@@ -21,6 +21,13 @@
     SAIU_PARA_ENTREGA: ["ENTREGUE"]
   };
 
+  const IMAGE_STATUS_LABEL = {
+    NENHUMA: "Nenhuma foto enviada.",
+    PROCESSANDO: "Processando imagem...",
+    PRONTA: "Foto publicada.",
+    ERRO: "Não foi possível processar a última imagem. Tente outro arquivo."
+  };
+
   const ACTION_LABEL = {
     CONFIRMADO: "Confirmar",
     EM_PREPARO: "Iniciar preparo",
@@ -47,6 +54,12 @@
     name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const dateTime = (value) =>
     new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  // Foto otimizada do restaurante (quando pronta) ou as iniciais do nome
+  const restaurantVisual = (r, cls = "avatar") =>
+    r.imageUrl
+      ? `<img class="${cls} photo" src="${esc(r.imageUrl)}" alt="Foto de ${esc(r.name)}" loading="lazy" />`
+      : `<div class="${cls}" aria-hidden="true">${esc(initials(r.name))}</div>`;
+
   const badge = (status) => `<span class="badge badge-${status}">${STATUS_LABEL[status] || status}</span>`;
 
   let toastTimer;
@@ -158,7 +171,7 @@
   function restaurantCard(r) {
     return `
       <a class="card restaurant-card" href="#/restaurante/${r.id}">
-        <div class="avatar" aria-hidden="true">${esc(initials(r.name))}</div>
+        ${restaurantVisual(r)}
         <h3>${esc(r.name)}</h3>
         <div class="meta">
           <span class="rating">★ ${Number(r.rating).toFixed(1)}</span>
@@ -179,7 +192,7 @@
     view.innerHTML = `
       <a href="#/" class="muted">← Voltar</a>
       <div class="restaurant-header" style="margin-top:12px">
-        <div class="avatar" aria-hidden="true">${esc(initials(restaurant.name))}</div>
+        ${restaurantVisual(restaurant)}
         <div>
           <h1>${esc(restaurant.name)}</h1>
           <div class="meta">
@@ -452,10 +465,11 @@
     await renderManage(area, mine.find((r) => r.id === state.managing));
   }
 
-  async function renderManage(area, restaurant) {
-    const [menu, orders] = await Promise.all([
-      window.api.get(`/restaurants/${restaurant.id}/menu`),
-      window.api.get(`/restaurants/${restaurant.id}/orders`)
+  async function renderManage(area, current) {
+    const [restaurant, menu, orders] = await Promise.all([
+      window.api.get(`/restaurants/${current.id}`), // dados atualizados (inclui o status da foto)
+      window.api.get(`/restaurants/${current.id}/menu`),
+      window.api.get(`/restaurants/${current.id}/orders`)
     ]);
     const active = orders.filter((o) => !["ENTREGUE", "CANCELADO"].includes(o.status));
 
@@ -465,6 +479,22 @@
         <div class="actions">
           <a class="btn btn-sm" href="#/restaurante/${restaurant.id}">Ver página</a>
           <button class="btn btn-sm btn-danger" id="delete-restaurant">Excluir</button>
+        </div>
+      </div>
+
+      <div class="section card image-panel">
+        ${restaurantVisual(restaurant, "avatar avatar-lg")}
+        <div>
+          <h3>Foto do restaurante</h3>
+          <p class="muted" id="image-status">${IMAGE_STATUS_LABEL[restaurant.imageStatus] || ""}</p>
+          <div class="actions">
+            <label class="btn btn-sm btn-primary file-btn">
+              ${restaurant.imageUrl ? "Trocar foto" : "Enviar foto"}
+              <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden />
+            </label>
+            ${restaurant.imageStatus !== "NENHUMA" ? `<button class="btn btn-sm btn-danger" id="image-remove">Remover foto</button>` : ""}
+          </div>
+          <p class="hint">JPEG, PNG ou WebP até 15 MB. A imagem é otimizada automaticamente (800 px, WebP).</p>
         </div>
       </div>
 
@@ -508,6 +538,33 @@
 
     const refresh = () => renderManage(area, restaurant);
     bindOrderActions(refresh);
+
+    area.querySelector("#image-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 15 * 1024 * 1024) return toast("A imagem deve ter no máximo 15 MB", true);
+      const statusEl = area.querySelector("#image-status");
+      try {
+        statusEl.textContent = "Enviando...";
+        await window.api.upload(`/restaurants/${restaurant.id}/image`, file);
+        statusEl.textContent = IMAGE_STATUS_LABEL.PROCESSANDO;
+        const final = await waitForImage(restaurant.id);
+        toast(final === "PRONTA" ? "Foto atualizada!" : "Não foi possível processar a imagem", final !== "PRONTA");
+        refresh();
+      } catch (error) {
+        statusEl.textContent = "";
+        toast(error.message, true);
+      }
+    });
+    area.querySelector("#image-remove")?.addEventListener("click", async () => {
+      try {
+        await window.api.del(`/restaurants/${restaurant.id}/image`);
+        toast("Foto removida");
+        refresh();
+      } catch (error) {
+        toast(error.message, true);
+      }
+    });
 
     area.querySelector("#delete-restaurant").addEventListener("click", async () => {
       if (!confirm(`Excluir ${restaurant.name}?`)) return;
@@ -559,6 +616,17 @@
         toast(error.message, true);
       }
     });
+  }
+
+  // O processamento é assíncrono (função serverless): consulta o status até terminar
+  async function waitForImage(restaurantId, { intervalMs = 1000, timeoutMs = 30000 } = {}) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const { imageStatus } = await window.api.get(`/restaurants/${restaurantId}/image/status`);
+      if (imageStatus !== "PROCESSANDO") return imageStatus;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return "PROCESSANDO";
   }
 
   // ------------------------------------------------------------------ login / cadastro

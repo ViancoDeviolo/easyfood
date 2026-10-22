@@ -32,16 +32,21 @@
     writeStorage(USER_KEY, user ? JSON.stringify(user) : null);
   }
 
-  async function request(method, path, body) {
+  async function request(method, path, body, { file } = {}) {
     const headers = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
     if (session.token) headers.Authorization = `Bearer ${session.token}`;
 
-    const response = await fetch(path, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined
-    });
+    let payload;
+    if (file) {
+      // Upload de arquivo: envia os bytes direto, com o tipo da imagem
+      headers["Content-Type"] = file.type || "application/octet-stream";
+      payload = file;
+    } else if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+      payload = JSON.stringify(body);
+    }
+
+    const response = await fetch(path, { method, headers, body: payload });
 
     if (response.status === 204) return null;
     const data = await response.json().catch(() => null);
@@ -63,6 +68,7 @@
     get: (path) => request("GET", path),
     post: (path, body) => request("POST", path, body ?? {}),
     patch: (path, body) => request("PATCH", path, body ?? {}),
-    del: (path) => request("DELETE", path)
+    del: (path) => request("DELETE", path),
+    upload: (path, file) => request("PUT", path, undefined, { file })
   };
 })();

@@ -6,7 +6,8 @@ const { NotFoundError, ForbiddenError, ConflictError } = require("../../shared/e
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
-function createRestaurantService({ restaurants, orders }) {
+// imageFiles é opcional: quando presente, os arquivos da foto são apagados junto com o restaurante
+function createRestaurantService({ restaurants, orders, imageFiles = { discard: async () => {} } }) {
   async function list({ search, category, page = 1, limit = DEFAULT_PAGE_SIZE } = {}) {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
     const safePage = Math.max(page, 1);
@@ -57,7 +58,9 @@ function createRestaurantService({ restaurants, orders }) {
     if (await orders.existsForRestaurant(id)) {
       throw new ConflictError("Restaurante possui pedidos e não pode ser removido");
     }
+    const image = await restaurants.findImage(id);
     await restaurants.remove(id);
+    await imageFiles.discard(image?.imageId);
   }
 
   return { list, listCategories, listByOwner, getById, getOwnedRestaurant, create, update, remove };

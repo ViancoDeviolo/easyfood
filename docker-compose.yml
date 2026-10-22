@@ -41,7 +41,11 @@ services:
       ORACLE_CONNECT_STRING: oracle:1521/FREEPDB1
       JWT_SECRET: ${JWT_SECRET:-troque-esta-chave-em-producao-por-uma-bem-longa}
       JWT_EXPIRES_IN: 1d
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage-data:/app/storage
     command: sh -c "npm run db:migrate && npm run db:seed && node server.js"
 
 volumes:
   oracle-data:
+  storage-data:

@@ -41,6 +41,18 @@ class ConflictError extends AppError {
   }
 }
 
+class PayloadTooLargeError extends AppError {
+  constructor(message = "Arquivo maior que o permitido") {
+    super(message, 413);
+  }
+}
+
+class UnsupportedMediaTypeError extends AppError {
+  constructor(message = "Formato de arquivo não suportado") {
+    super(message, 415);
+  }
+}
+
 class ServiceUnavailableError extends AppError {
   constructor(message = "Serviço temporariamente indisponível") {
     super(message, 503);
@@ -54,5 +66,7 @@ module.exports = {
   ForbiddenError,
   NotFoundError,
   ConflictError,
+  PayloadTooLargeError,
+  UnsupportedMediaTypeError,
   ServiceUnavailableError
 };

@@ -15,6 +15,12 @@ const { createAuthRoutes } = require("./modules/auth/auth.routes");
 const { createRestaurantService } = require("./modules/restaurants/restaurant.service");
 const { createRestaurantController } = require("./modules/restaurants/restaurant.controller");
 const { createRestaurantRoutes } = require("./modules/restaurants/restaurant.routes");
+const { createRestaurantImageService } = require("./modules/restaurants/restaurant-image.service");
+const { createRestaurantImageController } = require("./modules/restaurants/restaurant-image.controller");
+const { createRestaurantImageFiles } = require("./modules/restaurants/restaurant-image.files");
+
+const { createLocalFunctionRuntime } = require("./shared/functions/local-function-runtime");
+const optimizeImageFunction = require("../functions/optimize-image");
 
 const { createMenuService } = require("./modules/menu/menu.service");
 const { createMenuController } = require("./modules/menu/menu.controller");
@@ -26,7 +32,15 @@ const { createOrderRoutes, createRestaurantOrderRoutes } = require("./modules/or
 
 const { notFoundHandler, errorHandler } = require("./shared/http/error-handler");
 
-function createServices({ repositories, jwt }) {
+const DEFAULT_IMAGE_MAX_BYTES = 15 * 1024 * 1024;
+
+/**
+ * Cria os services. `storage` é opcional (o seed não precisa dele);
+ * sem storage, o módulo de fotos fica desligado.
+ */
+function createServices({ repositories, jwt, storage, imageMaxBytes = DEFAULT_IMAGE_MAX_BYTES }) {
+  const imageFiles = storage ? createRestaurantImageFiles({ storage }) : undefined;
+
   const authService = createAuthService({
     users: repositories.users,
     jwtSecret: jwt.secret,
@@ -34,8 +48,18 @@ function createServices({ repositories, jwt }) {
   });
   const restaurantService = createRestaurantService({
     restaurants: repositories.restaurants,
-    orders: repositories.orders
+    orders: repositories.orders,
+    imageFiles
   });
+  const restaurantImageService = storage
+    ? createRestaurantImageService({
+        restaurants: repositories.restaurants,
+        restaurantService,
+        storage,
+        imageFiles,
+        maxBytes: imageMaxBytes
+      })
+    : undefined;
   const menuService = createMenuService({
     menuItems: repositories.menuItems,
     orders: repositories.orders,
@@ -47,12 +71,23 @@ function createServices({ repositories, jwt }) {
     restaurantService
   });
 
-  return { authService, restaurantService, menuService, orderService };
+  return { authService, restaurantService, restaurantImageService, menuService, orderService };
 }
 
-function createApp({ repositories, jwt }) {
-  const services = createServices({ repositories, jwt });
+function createApp({ repositories, jwt, storage, imageMaxBytes = DEFAULT_IMAGE_MAX_BYTES }) {
+  if (!storage) throw new Error("createApp precisa de um storage para as fotos dos restaurantes");
+
+  const services = createServices({ repositories, jwt, storage, imageMaxBytes });
   const authenticate = createAuthMiddleware(services.authService);
+
+  // Trigger local da função serverless: novo arquivo em originals/ -> optimize-image
+  const functionRuntime = createLocalFunctionRuntime({
+    storage,
+    prefix: "originals/",
+    handler: optimizeImageFunction.handler,
+    onSuccess: services.restaurantImageService.handleProcessed,
+    onFailure: services.restaurantImageService.handleFailed
+  });
 
   const app = express();
 
@@ -87,6 +122,13 @@ function createApp({ repositories, jwt }) {
     "/restaurants",
     createRestaurantRoutes({
       controller: createRestaurantController(services.restaurantService),
+      imageController: createRestaurantImageController(services.restaurantImageService),
+      // Corpo binário só nesta rota, com limite próprio (o resto da API aceita até 100 kb de JSON)
+      imageBodyParser: express.raw({
+        // Aceita qualquer Content-Type: o formato real é conferido pelos bytes do arquivo (415 se inválido)
+        type: () => true,
+        limit: imageMaxBytes
+      }),
       authenticate
     })
   );
@@ -97,6 +139,7 @@ function createApp({ repositories, jwt }) {
 
   // Services expostos para scripts (ex.: seed) reutilizarem as mesmas regras de negócio
   app.locals.services = services;
+  app.locals.functionRuntime = functionRuntime;
 
   return app;
 }

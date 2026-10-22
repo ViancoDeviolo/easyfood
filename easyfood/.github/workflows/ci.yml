@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Testes (repositories em memória)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  oracle-integration:
+    name: Migrations + seed + smoke test no Oracle
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      oracle:
+        image: gvenzl/oracle-free:23-slim-faststart
+        env:
+          ORACLE_PASSWORD: EasyFoodAdmin_2026
+          APP_USER: easyfood
+          APP_USER_PASSWORD: EasyFood_2026
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd healthcheck.sh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DB_CLIENT: oracle
+      ORACLE_USER: easyfood
+      ORACLE_PASSWORD: EasyFood_2026
+      ORACLE_CONNECT_STRING: localhost:1521/FREEPDB1
+      JWT_SECRET: chave-de-teste-do-ci-com-mais-de-16-caracteres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run db:migrate # segunda execução não deve aplicar nada
+      - run: npm run db:seed
+      - name: Smoke test da API no Oracle
+        run: |
+          node server.js &
+          sleep 3
+          curl -sf localhost:3000/health
+          curl -sf "localhost:3000/restaurants?category=pizza"
+          TOKEN=$(curl -sf -X POST localhost:3000/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"cliente@easyfood.com","password":"easyfood123"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+          curl -sf -X POST localhost:3000/orders -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"restaurantId":1,"deliveryAddress":"Rua do CI, 1","items":[{"menuItemId":1,"quantity":2}]}'
+          curl -sf localhost:3000/orders -H "Authorization: Bearer $TOKEN"

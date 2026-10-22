@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EasyFood</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%23e8541e%27/%3E%3Ctext x=%2716%27 y=%2721%27 font-size=%2713%27 font-family=%27Arial%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3EEF%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#/" class="brand" aria-label="EasyFood, página inicial">
+        <span class="brand-mark" aria-hidden="true">EF</span>
+        <span>Easy<strong>Food</strong></span>
+      </a>
+      <nav class="nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main class="container" id="view" tabindex="-1"></main>
+
+  <footer class="footer">
+    <div class="container">
+      EasyFood · Software Architecture &amp; Design Patterns · UniFECAF 2026
+      <span class="footer-db" id="db-status"></span>
+    </div>
+  </footer>
+
+  <!-- Modal de login / cadastro -->
+  <dialog id="auth-dialog" class="dialog">
+    <form method="dialog" class="dialog-close-form">
+      <button class="icon-btn" aria-label="Fechar">×</button>
+    </form>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-auth-tab="login">Entrar</button>
+      <button type="button" class="tab" data-auth-tab="register">Criar conta</button>
+    </div>
+
+    <form id="login-form" class="form">
+      <label>E-mail <input name="email" type="email" required autocomplete="email" /></label>
+      <label>Senha <input name="password" type="password" required autocomplete="current-password" /></label>
+      <button class="btn btn-primary" type="submit">Entrar</button>
+      <p class="hint">Demonstração: <code>cliente@easyfood.com</code> ou <code>dono@easyfood.com</code>, senha <code>easyfood123</code></p>
+    </form>
+
+    <form id="register-form" class="form" hidden>
+      <label>Nome <input name="name" required minlength="2" autocomplete="name" /></label>
+      <label>E-mail <input name="email" type="email" required autocomplete="email" /></label>
+      <label>Senha <input name="password" type="password" required minlength="6" autocomplete="new-password" /></label>
+      <button class="btn btn-primary" type="submit">Criar conta</button>
+    </form>
+    <p class="form-error" id="auth-error" role="alert"></p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

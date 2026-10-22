@@ -1,8 +1,10 @@
 // Repository de restaurantes — implementação Oracle.
 
 const { oracledb, withConnection } = require("../../database/oracle");
+const { restaurantImageUrl } = require("./restaurant-image.constants");
 
-const COLUMNS = `id, owner_id, name, category, description, rating, delivery_fee, created_at, updated_at`;
+const COLUMNS = `id, owner_id, name, category, description, rating, delivery_fee,
+                 image_id, image_status, created_at, updated_at`;
 
 // Campos que podem ser atualizados -> coluna correspondente (whitelist contra SQL injection)
 const UPDATABLE_COLUMNS = {
@@ -23,6 +25,8 @@ function toRestaurant(row) {
     description: row.DESCRIPTION,
     rating: row.RATING,
     deliveryFee: row.DELIVERY_FEE,
+    imageStatus: row.IMAGE_STATUS,
+    imageUrl: restaurantImageUrl(row.ID, row.IMAGE_ID, row.IMAGE_STATUS),
     createdAt: row.CREATED_AT,
     updatedAt: row.UPDATED_AT
   };
@@ -149,7 +153,59 @@ function createOracleRestaurantRepository() {
     });
   }
 
-  return { findAll, findCategories, findById, create, update, remove };
+  /** Dados internos da foto (o imageId não é exposto na API). */
+  async function findImage(id) {
+    return withConnection(async (connection) => {
+      const result = await connection.execute(
+        `SELECT image_id, image_status FROM restaurants WHERE id = :id`,
+        { id }
+      );
+      const row = result.rows[0];
+      return row ? { imageId: row.IMAGE_ID, imageStatus: row.IMAGE_STATUS } : null;
+    });
+  }
+
+  /** Registra uma nova foto (ou remove, com imageId null e status NENHUMA). */
+  async function setImage(id, { imageId, imageStatus }) {
+    await withConnection((connection) =>
+      connection.execute(
+        `UPDATE restaurants
+            SET image_id = :imageId, image_status = :imageStatus, image_updated_at = SYSTIMESTAMP
+          WHERE id = :id`,
+        { id, imageId, imageStatus },
+        { autoCommit: true }
+      )
+    );
+  }
+
+  /**
+   * Atualiza o status apenas se a foto ainda for a mesma.
+   * Se o dono enviou outra foto enquanto a anterior era processada, o resultado antigo é ignorado.
+   */
+  async function updateImageStatus(imageId, imageStatus) {
+    return withConnection(async (connection) => {
+      const result = await connection.execute(
+        `UPDATE restaurants
+            SET image_status = :imageStatus, image_updated_at = SYSTIMESTAMP
+          WHERE image_id = :imageId`,
+        { imageId, imageStatus },
+        { autoCommit: true }
+      );
+      return result.rowsAffected > 0;
+    });
+  }
+
+  return {
+    findAll,
+    findCategories,
+    findById,
+    create,
+    update,
+    remove,
+    findImage,
+    setImage,
+    updateImageStatus
+  };
 }
 
 module.exports = { createOracleRestaurantRepository };

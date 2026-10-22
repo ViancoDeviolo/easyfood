@@ -1,0 +1,12 @@
+node_modules/
+# Fotos enviadas pelos restaurantes (dados, não código)
+storage/
+.env
+*.log
+coverage/
+.DS_Store
+# Wallet do Oracle Autonomous Database: nunca versionar
+wallet*/
+*.pem
+*.sso
+*.p12

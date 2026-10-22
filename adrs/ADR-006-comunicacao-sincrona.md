@@ -38,6 +38,8 @@ Manter **comunicação direta e síncrona** entre os módulos. Hoje nenhuma aç�
 - Se no futuro o cadastro de restaurante precisar notificar vários sistemas, o service vai acumular responsabilidades.
 - Chamadas lentas (ex.: e-mail) atrasariam a resposta da API se fossem adicionadas de forma síncrona.
 
+> **Atualização (22/10/2026):** o processamento das fotos dos restaurantes passou a usar um evento do storage para disparar uma função serverless ([ADR-007](ADR-007-processamento-de-imagens-serverless.md)). A comunicação entre os módulos da API continua síncrona.
+
 ## Critérios de revisão
 
 Reavaliar quando surgirem consumidores reais de eventos (e-mail, notificações, analytics), quando uma ação não precisar terminar antes de responder ao usuário, ou quando módulos forem extraídos para serviços separados.
