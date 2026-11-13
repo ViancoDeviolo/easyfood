@@ -21,6 +21,8 @@
     SAIU_PARA_ENTREGA: ["ENTREGUE"]
   };
 
+  const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // mesmo limite da API (IMAGE_MAX_MB)
+
   const IMAGE_STATUS_LABEL = {
     NENHUMA: "Nenhuma foto enviada.",
     PROCESSANDO: "Processando imagem...",
@@ -428,6 +430,8 @@
             <label>Categoria <input name="category" required minlength="2" placeholder="Ex.: Pizza" /></label>
             <label>Descrição <input name="description" maxlength="500" /></label>
             <label>Taxa de entrega (R$) <input name="deliveryFee" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Foto (opcional) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+            <p class="hint">JPEG, PNG ou WebP até 15 MB.</p>
             <button class="btn btn-primary" type="submit">Cadastrar</button>
           </form>
         </aside>
@@ -441,7 +445,15 @@
     );
     view.querySelector("#restaurant-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const data = formData(event.target);
+      const form = event.target;
+      const data = formData(form);
+      const photo = form.elements.photo.files[0];
+
+      // Confere a foto antes de criar o restaurante, para não cadastrar e depois falhar no upload
+      if (photo && photo.size > MAX_IMAGE_BYTES) return toast("A foto deve ter no máximo 15 MB", true);
+
+      const submit = form.querySelector('button[type="submit"]');
+      submit.disabled = true; // evita cadastro duplicado com duplo clique
       try {
         const created = await window.api.post("/restaurants", {
           name: data.name,
@@ -450,10 +462,29 @@
           deliveryFee: Number(data.deliveryFee || 0)
         });
         state.managing = created.id;
-        toast(`${created.name} cadastrado!`);
-        renderPanel();
+
+        if (!photo) {
+          toast(`${created.name} cadastrado!`);
+          return renderPanel();
+        }
+
+        // O restaurante é a operação principal; a foto é secundária.
+        // Se o envio da foto falhar, o restaurante continua cadastrado e a foto pode ser enviada pelo painel.
+        try {
+          await window.api.upload(`/restaurants/${created.id}/image`, photo);
+          toast(`${created.name} cadastrado! Processando a foto...`);
+          renderPanel();
+          const final = await waitForImage(created.id);
+          if (final === "ERRO") toast("Restaurante cadastrado, mas a foto não pôde ser processada", true);
+          if (state.managing === created.id) renderPanel();
+        } catch (error) {
+          toast(`${created.name} cadastrado, mas a foto não foi enviada: ${error.message}`, true);
+          renderPanel();
+        }
       } catch (error) {
         toast(error.message, true);
+      } finally {
+        submit.disabled = false;
       }
     });
 
@@ -542,7 +573,7 @@
     area.querySelector("#image-input").addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-      if (file.size > 15 * 1024 * 1024) return toast("A imagem deve ter no máximo 15 MB", true);
+      if (file.size > MAX_IMAGE_BYTES) return toast("A imagem deve ter no máximo 15 MB", true);
       const statusEl = area.querySelector("#image-status");
       try {
         statusEl.textContent = "Enviando...";

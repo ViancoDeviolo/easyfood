@@ -68,7 +68,7 @@ Detalhes, SQL Developer, consultas úteis e Oracle na nuvem: **[docs/oracle.md](
 - Cardápio por restaurante, com disponibilidade de cada item.
 - Pedidos: preço e total calculados no servidor, pedido e itens gravados numa única transação no Oracle, ciclo de vida `PENDENTE → CONFIRMADO → EM_PREPARO → SAIU_PARA_ENTREGA → ENTREGUE` (ou `CANCELADO`).
 - Interface web com área do cliente e painel do dono do restaurante.
-- Foto de perfil do restaurante: a API recebe o arquivo e responde `202`; uma função serverless redimensiona e comprime a imagem em segundo plano (de ~12 MB para centenas de KB).
+- Foto de perfil do restaurante, enviada no próprio cadastro ou depois pelo painel: a API recebe o arquivo e responde `202`; uma função serverless redimensiona e comprime a imagem em segundo plano (de ~12 MB para centenas de KB).
 - `/health` indica se o banco está disponível; a API responde `503` quando o Oracle está fora.
 
 Referência completa dos endpoints: **[docs/api.md](docs/api.md)** · requisições prontas: [docs/easyfood.http](docs/easyfood.http)
