@@ -2,13 +2,16 @@
 
 const { oracledb, withConnection } = require("../../database/oracle");
 
-const COLUMNS = `id, restaurant_id, name, description, price, available, created_at, updated_at`;
+const COLUMNS = `id, restaurant_id, name, description, category, price, available, image_url,
+                 created_at, updated_at`;
 
 const UPDATABLE_COLUMNS = {
   name: "name",
   description: "description",
   price: "price",
-  available: "available"
+  available: "available",
+  category: "category",
+  imageUrl: "image_url"
 };
 
 function toMenuItem(row) {
@@ -18,6 +21,8 @@ function toMenuItem(row) {
     restaurantId: row.RESTAURANT_ID,
     name: row.NAME,
     description: row.DESCRIPTION,
+    category: row.CATEGORY,
+    imageUrl: row.IMAGE_URL,
     price: row.PRICE,
     available: row.AVAILABLE === 1, // NUMBER(1) no banco -> boolean na aplicação
     createdAt: row.CREATED_AT,
@@ -72,16 +77,17 @@ function createOracleMenuItemRepository() {
     });
   }
 
-  async function create({ restaurantId, name, description, price, available }) {
+  async function create({ restaurantId, name, description, category, price, available }) {
     const id = await withConnection(async (connection) => {
       const result = await connection.execute(
-        `INSERT INTO menu_items (restaurant_id, name, description, price, available)
-         VALUES (:restaurantId, :name, :description, :price, :available)
+        `INSERT INTO menu_items (restaurant_id, name, description, category, price, available)
+         VALUES (:restaurantId, :name, :description, :category, :price, :available)
          RETURNING id INTO :id`,
         {
           restaurantId,
           name,
           description: description ?? null,
+          category: category ?? null,
           price,
           available: toColumnValue("available", available),
           id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }

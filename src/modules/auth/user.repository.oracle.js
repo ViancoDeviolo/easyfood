@@ -2,7 +2,7 @@
 
 const { oracledb, withConnection } = require("../../database/oracle");
 
-const COLUMNS = `id, name, email, password_hash, created_at`;
+const COLUMNS = `id, name, email, password_hash, image_url, created_at`;
 
 function toUser(row) {
   if (!row) return null;
@@ -11,6 +11,7 @@ function toUser(row) {
     name: row.NAME,
     email: row.EMAIL,
     passwordHash: row.PASSWORD_HASH,
+    imageUrl: row.IMAGE_URL,
     createdAt: row.CREATED_AT
   };
 }
@@ -55,7 +56,19 @@ function createOracleUserRepository() {
     return findById(id);
   }
 
-  return { findById, findByEmail, create };
+  /** Grava (ou limpa, com null) o caminho da foto de perfil. */
+  async function updateImageUrl(id, imageUrl) {
+    await withConnection((connection) =>
+      connection.execute(
+        `UPDATE users SET image_url = :imageUrl WHERE id = :id`,
+        { id, imageUrl },
+        { autoCommit: true }
+      )
+    );
+    return findById(id);
+  }
+
+  return { findById, findByEmail, create, updateImageUrl };
 }
 
 module.exports = { createOracleUserRepository };

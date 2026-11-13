@@ -11,10 +11,17 @@ const SALT_ROUNDS = 10;
 const DUMMY_HASH = bcrypt.hashSync("easyfood-dummy-password", SALT_ROUNDS);
 
 function toPublicUser(user) {
-  return { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    imageUrl: user.imageUrl ?? null,
+    createdAt: user.createdAt
+  };
 }
 
-function createAuthService({ users, jwtSecret, jwtExpiresIn }) {
+// imageService (compartilhado) é opcional: scripts como o seed não precisam dele
+function createAuthService({ users, jwtSecret, jwtExpiresIn, imageService }) {
   async function register({ name, email, password }) {
     const existing = await users.findByEmail(email);
     if (existing) throw new ConflictError("E-mail já cadastrado");
@@ -56,7 +63,35 @@ function createAuthService({ users, jwtSecret, jwtExpiresIn }) {
     return toPublicUser(user);
   }
 
-  return { register, login, verifyToken, getProfile };
+  /**
+   * Troca a foto de perfil do usuário AUTENTICADO.
+   * O userId vem do token (req.user.id), nunca do corpo ou da URL: ninguém altera a foto de outra pessoa.
+   */
+  async function updateProfileImage(userId, imageBuffer) {
+    const user = await users.findById(userId);
+    if (!user) throw new NotFoundError("Usuário não encontrado");
+
+    const previousUrl = user.imageUrl; // guardado antes de atualizar o registro
+    const { url } = await imageService.saveOptimized("users", imageBuffer);
+    try {
+      const updated = await users.updateImageUrl(userId, url);
+      await imageService.remove(previousUrl); // a foto antiga não é mais usada
+      return toPublicUser(updated);
+    } catch (error) {
+      await imageService.remove(url); // banco falhou: não deixa arquivo órfão
+      throw error;
+    }
+  }
+
+  async function removeProfileImage(userId) {
+    const user = await users.findById(userId);
+    if (!user) throw new NotFoundError("Usuário não encontrado");
+    const previousUrl = user.imageUrl;
+    await users.updateImageUrl(userId, null);
+    await imageService.remove(previousUrl);
+  }
+
+  return { register, login, verifyToken, getProfile, updateProfileImage, removeProfileImage };
 }
 
 module.exports = { createAuthService };

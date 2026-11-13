@@ -21,7 +21,18 @@ function createAuthController(authService) {
     res.json(user);
   }
 
-  return { register, login, me };
+  async function uploadImage(req, res) {
+    // req.file vem do middleware do Multer; o dono da foto é sempre quem está no token
+    const user = await authService.updateProfileImage(req.user.id, req.file.buffer);
+    res.json(user);
+  }
+
+  async function removeImage(req, res) {
+    await authService.removeProfileImage(req.user.id);
+    res.status(204).end();
+  }
+
+  return { register, login, me, uploadImage, removeImage };
 }
 
 module.exports = { createAuthController };

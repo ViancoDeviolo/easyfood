@@ -13,7 +13,7 @@
 
 const express = require("express");
 
-function createRestaurantRoutes({ controller, imageController, imageBodyParser, authenticate }) {
+function createRestaurantRoutes({ controller, imageController, uploadImage, authenticate }) {
   const router = express.Router();
 
   router.get("/", controller.list);
@@ -24,8 +24,8 @@ function createRestaurantRoutes({ controller, imageController, imageBodyParser, 
   router.patch("/:id", authenticate, controller.update);
   router.delete("/:id", authenticate, controller.remove);
 
-  // authenticate vem antes do parser: requisição sem token é recusada sem ler os 15 MB do corpo
-  router.put("/:id/image", authenticate, imageBodyParser, imageController.upload);
+  // authenticate vem antes do upload: requisição sem token é recusada sem ler os 15 MB do arquivo
+  router.put("/:id/image", authenticate, uploadImage, imageController.upload);
   router.get("/:id/image", imageController.show);
   router.get("/:id/image/status", imageController.status);
   router.delete("/:id/image", authenticate, imageController.remove);

@@ -4,7 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EasyFood</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%23e8541e%27/%3E%3Ctext x=%2716%27 y=%2721%27 font-size=%2713%27 font-family=%27Arial%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3EEF%3C/text%3E%3C/svg%3E" />
+  <meta name="theme-color" content="#C8231E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%2716%27 fill=%27%23C8231E%27/%3E%3Ctext x=%2716%27 y=%2721.5%27 font-size=%2713%27 font-family=%27Arial%27 font-weight=%27800%27 fill=%27%23FFB400%27 text-anchor=%27middle%27%3EEF%3C/text%3E%3C/svg%3E" />
+  <!-- Fonte de títulos e texto; sem internet, o CSS cai para a fonte do sistema -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -12,7 +17,7 @@
     <div class="container topbar-inner">
       <a href="#/" class="brand" aria-label="EasyFood, página inicial">
         <span class="brand-mark" aria-hidden="true">EF</span>
-        <span>Easy<strong>Food</strong></span>
+        <span class="brand-name">EasyFood</span>
       </a>
       <nav class="nav" id="nav"></nav>
     </div>
@@ -22,7 +27,7 @@
 
   <footer class="footer">
     <div class="container">
-      EasyFood · Software Architecture &amp; Design Patterns · UniFECAF 2026
+      <span>Projeto EasyFood, Software Architecture &amp; Design Patterns, UniFECAF 2026</span>
       <span class="footer-db" id="db-status"></span>
     </div>
   </footer>

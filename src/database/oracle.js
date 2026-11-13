@@ -105,7 +105,12 @@ const CONSTRAINT_ERRORS = {
   FK_RESTAURANTS_OWNER: () => new NotFoundError("Usuário responsável não encontrado")
 };
 
-const CONNECTION_ERROR_NUMS = new Set([1017, 3113, 3114, 12170, 12514, 12528, 12541]);
+// Erros que significam "o banco não está acessível agora" -> 503, não 500.
+// 1033/1034/1089: Oracle iniciando, parado ou desligando (comum logo após "docker compose up").
+const CONNECTION_ERROR_NUMS = new Set([
+  1017, 1033, 1034, 1089, 3113, 3114, 3135, 12170, 12514, 12516, 12519, 12520, 12521, 12528, 12537,
+  12541, 12545, 12547
+]);
 
 function extractConstraintName(message = "") {
   // Ex.: "ORA-00001: unique constraint (EASYFOOD.UK_USERS_EMAIL) violated"

@@ -1,0 +1,27 @@
+// Identificação do formato real de uma imagem.
+// A extensão vem dos primeiros bytes do arquivo ("magic numbers"), nunca do nome
+// nem do Content-Type enviado pelo cliente, que podem ser falsificados.
+
+const IMAGE_TYPES = [
+  { ext: "jpg", matches: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  {
+    ext: "png",
+    matches: (b) =>
+      b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  },
+  {
+    ext: "webp",
+    matches: (b) =>
+      b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP"
+  }
+];
+
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+function detectImageExtension(buffer) {
+  if (!Buffer.isBuffer(buffer)) return null;
+  const type = IMAGE_TYPES.find((candidate) => candidate.matches(buffer));
+  return type ? type.ext : null;
+}
+
+module.exports = { IMAGE_TYPES, ALLOWED_MIME_TYPES, detectImageExtension };

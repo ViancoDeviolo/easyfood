@@ -94,6 +94,7 @@ flowchart TB
         repos["*.repository.oracle.js<br/>SQL + mapeamento"]
         oracle["database/oracle.js<br/>pool, transações,<br/>tradução de erros ORA-"]
         errors["shared/<br/>validação + error handler"]
+        images["shared/images/<br/>upload.middleware (Multer)<br/>image.service (Sharp)"]
     end
 
     app --> mw
@@ -102,6 +103,8 @@ flowchart TB
     orders -. "getById()" .-> rest
     modules --> factory --> repos --> oracle --> db[("Oracle Database")]
     modules -.-> errors
+    auth -. "foto de perfil" .-> images
+    menu -. "foto do prato" .-> images
 ```
 
 Responsabilidades:
@@ -163,6 +166,7 @@ erDiagram
         VARCHAR2 name
         VARCHAR2 email UK
         VARCHAR2 password_hash "bcrypt"
+        VARCHAR2 image_url "foto de perfil (caminho)"
         TIMESTAMP_TZ created_at
     }
     RESTAURANTS {
@@ -180,6 +184,8 @@ erDiagram
         NUMBER id PK "IDENTITY"
         NUMBER restaurant_id FK "ON DELETE CASCADE"
         VARCHAR2 name "UK com restaurant_id"
+        VARCHAR2 category "opcional"
+        VARCHAR2 image_url "foto do prato (caminho)"
         NUMBER price "10,2 - CHECK > 0"
         NUMBER available "1 = sim, 0 = não"
     }
@@ -236,4 +242,5 @@ As transições ficam em `src/modules/orders/order-status.js`. A atualização n
 | **Unit of Work** (via transação) | `withTransaction()` em `oracle.js` | Pedido + itens gravados atomicamente |
 | **Object Pool** | pool do `oracledb` | Reaproveitar conexões com o banco |
 | **Serverless / FaaS** | `functions/optimize-image/` | Executar o processamento pesado de imagens sob demanda, fora da API |
+| **Shared Service** | `src/shared/images/image.service.js` | Uma única implementação de validar, otimizar e guardar imagens, usada por perfil e pratos ([ADR-008](../adrs/ADR-008-servico-de-imagens-compartilhado.md)) |
 | **Observer (evento)** | `storage.on("object.created")` + runtime local | O storage avisa que chegou um arquivo; a função reage sem a API chamá-la diretamente |

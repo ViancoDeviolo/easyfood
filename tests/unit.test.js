@@ -35,6 +35,8 @@ describe("Tradução de erros do Oracle", () => {
   it("falhas de conexão viram 503", () => {
     assert.equal(translateOracleError({ code: "NJS-503", message: "connection refused" }).statusCode, 503);
     assert.equal(translateOracleError({ errorNum: 12514, message: "ORA-12514" }).statusCode, 503);
+    // Oracle ainda inicializando logo depois de subir o container
+    assert.equal(translateOracleError({ errorNum: 1033, message: "ORA-01033: ORACLE initialization or shutdown in progress" }).statusCode, 503);
   });
 
   it("erros desconhecidos passam adiante sem alteração", () => {

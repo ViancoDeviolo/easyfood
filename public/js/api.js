@@ -38,9 +38,10 @@
 
     let payload;
     if (file) {
-      // Upload de arquivo: envia os bytes direto, com o tipo da imagem
-      headers["Content-Type"] = file.type || "application/octet-stream";
-      payload = file;
+      // Upload de arquivo: multipart/form-data no campo "image" (recebido pelo Multer no servidor).
+      // O navegador define o Content-Type com o "boundary" sozinho, então não o setamos aqui.
+      payload = new FormData();
+      payload.append("image", file);
     } else if (body !== undefined) {
       headers["Content-Type"] = "application/json";
       payload = JSON.stringify(body);
@@ -69,6 +70,7 @@
     post: (path, body) => request("POST", path, body ?? {}),
     patch: (path, body) => request("PATCH", path, body ?? {}),
     del: (path) => request("DELETE", path),
-    upload: (path, file) => request("PUT", path, undefined, { file })
+    // PUT para a foto do restaurante (substitui o recurso); POST para perfil e prato (rotas da atividade)
+    upload: (path, file, method = "PUT") => request(method, path, undefined, { file })
   };
 })();

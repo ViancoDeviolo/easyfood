@@ -70,3 +70,17 @@ POST {{base}}/restaurants
 Content-Type: application/json
 
 { "name": "Sem token", "category": "Teste" }
+
+### Cadastrar prato (Parte 1 da atividade) — use o token do dono: dono@easyfood.com
+POST {{base}}/restaurants/1/dishes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Pizza Portuguesa", "category": "Pizzas", "description": "8 fatias", "price": 57.9 }
+
+### Cardápio com categoria e imageUrl de cada prato
+GET {{base}}/restaurants/1/dishes
+
+### Uploads de imagem (multipart): pelo terminal é mais simples
+# curl -X POST {{base}}/auth/me/image -H "Authorization: Bearer TOKEN" -F "image=@perfil.jpg"
+# curl -X POST {{base}}/dishes/1/image  -H "Authorization: Bearer TOKEN" -F "image=@prato.jpg"

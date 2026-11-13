@@ -28,7 +28,7 @@ Erros seguem sempre o formato `{ "error": "mensagem", "details": ["..."] }` (`de
 
 | Método | Rota | Descrição | Sucesso |
 |---|---|---|---|
-| PUT 🔒 | `/restaurants/:id/image` | Envia a foto (somente o dono). Corpo = bytes do arquivo, JPEG/PNG/WebP até 15 MB. O processamento é assíncrono | `202 { "imageStatus": "PROCESSANDO" }` |
+| PUT 🔒 | `/restaurants/:id/image` | Envia a foto (somente o dono). `multipart/form-data`, campo `image`, JPEG/PNG/WebP até 15 MB. O processamento é assíncrono | `202 { "imageStatus": "PROCESSANDO" }` |
 | GET | `/restaurants/:id/image/status` | `NENHUMA`, `PROCESSANDO`, `PRONTA` ou `ERRO` | `200` |
 | GET | `/restaurants/:id/image` | Foto otimizada (WebP, até 800 px). `404` enquanto não estiver pronta | `200 image/webp` |
 | DELETE 🔒 | `/restaurants/:id/image` | Remove a foto (somente o dono) | `204` |
@@ -40,16 +40,36 @@ Exemplo com `curl`:
 ```bash
 curl -X PUT http://localhost:3000/restaurants/1/image \
   -H "Authorization: Bearer SEU_TOKEN" \
-  -H "Content-Type: image/jpeg" \
-  --data-binary @foto.jpg
+  -F "image=@foto.jpg"
 ```
 
-## Cardápio
+## Foto de perfil do usuário
 
 | Método | Rota | Descrição | Sucesso |
 |---|---|---|---|
-| GET | `/restaurants/:id/menu` | Itens do cardápio | `200` |
-| POST 🔒 | `/restaurants/:id/menu` | Novo item `{ name, price, description?, available? }` (somente o dono) | `201` |
+| POST 🔒 | `/auth/me/image` | Envia ou troca a foto do **usuário do token** (`multipart/form-data`, campo `image`) | `200` usuário com `imageUrl` |
+| DELETE 🔒 | `/auth/me/image` | Remove a foto de perfil | `204` |
+
+`GET /auth/me` e o login devolvem `imageUrl`. A imagem é processada na hora pelo serviço compartilhado (Multer + Sharp, 800 px, WebP).
+
+## Imagens públicas
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/images/users/<uuid>.webp` | Foto de perfil |
+| GET | `/images/dishes/<uuid>.webp` | Foto do prato |
+
+## Cardápio (pratos)
+
+As rotas respondem tanto em `/restaurants/:id/menu` quanto em `/restaurants/:id/dishes` (mesmo recurso).
+
+| Método | Rota | Descrição | Sucesso |
+|---|---|---|---|
+| GET | `/restaurants/:id/dishes` | Pratos do restaurante, com `category` e `imageUrl` | `200` |
+| POST 🔒 | `/restaurants/:id/dishes` | Novo prato `{ name, price, category?, description?, available? }` (somente o dono). Não exige imagem | `201` |
+| GET | `/dishes/:dishId` | Dados de um prato | `200` |
+| POST 🔒 | `/dishes/:dishId/image` | Envia ou troca a foto do prato (somente o dono; `multipart/form-data`, campo `image`) | `200` prato com `imageUrl` |
+| DELETE 🔒 | `/dishes/:dishId/image` | Remove a foto do prato | `204` |
 | PATCH 🔒 | `/restaurants/:id/menu/:itemId` | Alteração parcial, ex. `{ "available": false }` | `200` |
 | DELETE 🔒 | `/restaurants/:id/menu/:itemId` | Remoção (bloqueada se o item já foi pedido) | `204` |
 
@@ -80,6 +100,7 @@ curl -X PUT http://localhost:3000/restaurants/1/image \
 | 404 | Recurso ou rota inexistente |
 | 409 | Conflito: e-mail duplicado, item indisponível, transição de status inválida, remoção bloqueada |
 | 413 | Arquivo maior que o limite (15 MB) |
+| 422 | Imagem corrompida: o Sharp não conseguiu processar |
 | 415 | Arquivo não é JPEG, PNG nem WebP (conferido pelos bytes, não pelo nome) |
 | 503 | Banco de dados indisponível |
 

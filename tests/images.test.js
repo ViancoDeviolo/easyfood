@@ -50,8 +50,13 @@ describe("Foto do restaurante (upload + processamento assíncrono)", () => {
     restaurant = await createRestaurant(api, owner);
   });
 
+  const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+  // multipart/form-data, campo "image" (Multer)
   const upload = (user, buffer, type = "image/jpeg") =>
-    api.put(`/restaurants/${restaurant.id}/image`).set(user.auth).set("Content-Type", type).send(buffer);
+    api
+      .put(`/restaurants/${restaurant.id}/image`)
+      .set(user.auth)
+      .attach("image", buffer, { filename: `foto.${EXT[type] || "bin"}`, contentType: type });
 
   const waitForFunction = () => app.locals.functionRuntime.drain();
   const filesIn = (folder) => {
@@ -99,7 +104,10 @@ describe("Foto do restaurante (upload + processamento assíncrono)", () => {
 
   it("exige token e só o dono pode enviar ou remover a foto", async () => {
     const image = await makeImage({ width: 400, height: 300 });
-    await api.put(`/restaurants/${restaurant.id}/image`).set("Content-Type", "image/jpeg").send(image).expect(401);
+    await api
+      .put(`/restaurants/${restaurant.id}/image`)
+      .attach("image", image, { filename: "foto.jpg", contentType: "image/jpeg" })
+      .expect(401);
     await upload(other, image).expect(403);
     await api.delete(`/restaurants/${restaurant.id}/image`).set(other.auth).expect(403);
   });
@@ -116,13 +124,16 @@ describe("Foto do restaurante (upload + processamento assíncrono)", () => {
     await smallApi
       .put(`/restaurants/${smallRestaurant.id}/image`)
       .set(smallOwner.auth)
-      .set("Content-Type", "image/jpeg")
-      .send(await makeImage())
+      .attach("image", await makeImage(), { filename: "foto.jpg", contentType: "image/jpeg" })
       .expect(413);
   });
 
-  it("recusa corpo vazio (400)", async () => {
-    await upload(owner, Buffer.alloc(0)).expect(400);
+  it("recusa requisição sem arquivo (400)", async () => {
+    await api.put(`/restaurants/${restaurant.id}/image`).set(owner.auth).expect(400);
+  });
+
+  it("recusa tipo declarado que não é imagem (415)", async () => {
+    await upload(owner, Buffer.from("%PDF-1.4"), "application/pdf").expect(415);
   });
 
   it("marca ERRO quando a função não consegue processar o arquivo", async () => {

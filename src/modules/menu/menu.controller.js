@@ -35,7 +35,21 @@ function createMenuController(menuService) {
     res.status(204).end();
   }
 
-  return { list, create, update, remove };
+  async function show(req, res) {
+    res.json(await menuService.getById(parseId(req.params.dishId, "dishId")));
+  }
+
+  async function uploadImage(req, res) {
+    const dish = await menuService.updateImage(parseId(req.params.dishId, "dishId"), req.user.id, req.file.buffer);
+    res.json(dish);
+  }
+
+  async function removeImage(req, res) {
+    await menuService.removeImage(parseId(req.params.dishId, "dishId"), req.user.id);
+    res.status(204).end();
+  }
+
+  return { list, create, update, remove, show, uploadImage, removeImage };
 }
 
 module.exports = { createMenuController };

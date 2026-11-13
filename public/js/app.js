@@ -62,6 +62,34 @@
       ? `<img class="${cls} photo" src="${esc(r.imageUrl)}" alt="Foto de ${esc(r.name)}" loading="lazy" />`
       : `<div class="${cls}" aria-hidden="true">${esc(initials(r.name))}</div>`;
 
+  // Avatar do usuário: foto de perfil ou iniciais
+  const userAvatar = (user, cls = "user-avatar") =>
+    user?.imageUrl
+      ? `<img class="${cls}" src="${esc(user.imageUrl)}" alt="" />`
+      : `<span class="${cls}" aria-hidden="true">${esc(initials(user?.name || "?"))}</span>`;
+
+  // Foto do prato ou um prato vazio desenhado em CSS
+  const dishVisual = (item) =>
+    item.imageUrl
+      ? `<img class="dish-photo" src="${esc(item.imageUrl)}" alt="${esc(item.name)}" loading="lazy" />`
+      : `<span class="dish-photo dish-photo-empty" aria-hidden="true"></span>`;
+
+  // Agrupa o cardápio por categoria, mantendo a ordem em que as categorias aparecem
+  function groupByCategory(items) {
+    const groups = new Map();
+    for (const item of items) {
+      const key = item.category || "Outros itens";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+    return [...groups.entries()];
+  }
+
+  async function uploadWithCheck(path, file, method) {
+    if (file.size > MAX_IMAGE_BYTES) throw new Error("A imagem deve ter no máximo 15 MB");
+    return window.api.upload(path, file, method);
+  }
+
   const badge = (status) => `<span class="badge badge-${status}">${STATUS_LABEL[status] || status}</span>`;
 
   let toastTimer;
@@ -94,10 +122,13 @@
       ? `${link("#/", "Restaurantes")}
          ${link("#/pedidos", "Meus pedidos")}
          ${link("#/painel", "Meus restaurantes")}
-         <span class="user">Olá, ${esc(session.user.name.split(" ")[0])}</span>
-         <button class="btn btn-sm" id="logout-btn">Sair</button>`
+         <a href="#/perfil" class="profile-link ${route === "#/perfil" ? "active" : ""}" title="Meu perfil">
+           ${userAvatar(session.user)}
+           <span>${esc(session.user.name.split(" ")[0])}</span>
+         </a>
+         <button class="btn btn-sm btn-ghost-light" id="logout-btn">Sair</button>`
       : `${link("#/", "Restaurantes")}
-         <button class="btn btn-sm btn-primary" id="login-btn">Entrar</button>`;
+         <button class="btn btn-sm" id="login-btn">Entrar</button>`;
 
     nav.querySelector("#logout-btn")?.addEventListener("click", () => {
       window.api.setSession(null, null);
@@ -118,6 +149,7 @@
       if (page === "restaurante" && id) await renderRestaurant(Number(id));
       else if (page === "pedidos") await renderOrders();
       else if (page === "painel") await renderPanel();
+      else if (page === "perfil") await renderProfile();
       else await renderHome();
     } catch (error) {
       view.innerHTML = `<div class="empty">Não foi possível carregar: ${esc(error.message)}</div>`;
@@ -139,12 +171,13 @@
     view.innerHTML = `
       <section class="hero">
         <h1>Bateu a fome?</h1>
-        <p>Escolha um restaurante, monte seu pedido e acompanhe a entrega.</p>
+        <p>Peça dos restaurantes do bairro e acompanhe o pedido até a sua porta.</p>
         <form class="search" id="search-form" role="search">
-          <input name="search" placeholder="Buscar restaurante" value="${esc(state.search)}" aria-label="Buscar restaurante" />
-          <button class="btn" type="submit">Buscar</button>
+          <input name="search" placeholder="Pizza, temaki, hambúrguer..." value="${esc(state.search)}" aria-label="Buscar restaurante" />
+          <button class="btn btn-mustard" type="submit">Buscar</button>
         </form>
       </section>
+      <h2 class="section-heading">${state.search || state.category ? "Resultados" : "Restaurantes perto de você"}</h2>
       <div class="chips" role="group" aria-label="Categorias">
         <button class="chip ${state.category ? "" : "active"}" data-category="">Todas</button>
         ${categories
@@ -192,8 +225,8 @@
     ]);
 
     view.innerHTML = `
-      <a href="#/" class="muted">← Voltar</a>
-      <div class="restaurant-header" style="margin-top:12px">
+      <a href="#/" class="back-link">Voltar aos restaurantes</a>
+      <div class="restaurant-header">
         ${restaurantVisual(restaurant)}
         <div>
           <h1>${esc(restaurant.name)}</h1>
@@ -207,13 +240,17 @@
       <div class="layout-2">
         <section>
           <h2>Cardápio</h2>
-          <div class="menu-list">
-            ${
-              menu.length === 0
-                ? `<div class="empty">Este restaurante ainda não cadastrou itens.</div>`
-                : menu.map(menuItemRow).join("")
-            }
-          </div>
+          ${
+            menu.length === 0
+              ? `<div class="empty">Este restaurante ainda não cadastrou itens.</div>`
+              : groupByCategory(menu)
+                  .map(
+                    ([category, items]) => `
+              <h3 class="menu-group">${esc(category)}</h3>
+              <div class="menu-list">${items.map(menuItemRow).join("")}</div>`
+                  )
+                  .join("")
+          }
         </section>
         <aside class="card cart" id="cart" aria-label="Sacola"></aside>
       </div>`;
@@ -230,7 +267,8 @@
   function menuItemRow(item) {
     return `
       <div class="card menu-item ${item.available ? "" : "unavailable"}">
-        <div>
+        ${dishVisual(item)}
+        <div class="menu-item-body">
           <h3>${esc(item.name)}</h3>
           ${item.description ? `<p class="muted">${esc(item.description)}</p>` : ""}
           <span class="price">${money(item.price)}</span>
@@ -545,10 +583,17 @@
             .map(
               (item) => `
             <div class="card menu-item">
-              <div>
-                <strong>${esc(item.name)}</strong> · <span class="price">${money(item.price)}</span>
+              ${dishVisual(item)}
+              <div class="menu-item-body">
+                <strong>${esc(item.name)}</strong>
+                <span class="muted">${esc(item.category || "Sem categoria")}</span>
+                <span class="price">${money(item.price)}</span>
               </div>
               <div class="actions">
+                <label class="btn btn-sm file-btn">
+                  ${item.imageUrl ? "Trocar foto" : "Foto"}
+                  <input type="file" data-dish-photo="${item.id}" accept="image/jpeg,image/png,image/webp" hidden />
+                </label>
                 <label class="switch"><input type="checkbox" data-toggle="${item.id}" ${item.available ? "checked" : ""}/> Disponível</label>
                 <button class="btn btn-sm btn-danger" data-remove="${item.id}">Remover</button>
               </div>
@@ -562,6 +607,13 @@
             <label>Nome <input name="name" required minlength="2" /></label>
             <label>Preço (R$) <input name="price" type="number" min="0.01" step="0.01" required /></label>
           </div>
+          <div class="row">
+            <label>Categoria <input name="category" maxlength="100" placeholder="Ex.: Pizzas, Bebidas" list="dish-categories" /></label>
+            <label>Foto (opcional) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" /></label>
+          </div>
+          <datalist id="dish-categories">
+            ${[...new Set(menu.map((m) => m.category).filter(Boolean))].map((c) => `<option value="${esc(c)}"></option>`).join("")}
+          </datalist>
           <label>Descrição <input name="description" maxlength="500" /></label>
           <button class="btn btn-primary" type="submit">Adicionar ao cardápio</button>
         </form>
@@ -634,15 +686,101 @@
     );
     area.querySelector("#item-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const data = formData(event.target);
+      const form = event.target;
+      const data = formData(form);
+      const photo = form.elements.photo.files[0];
+      if (photo && photo.size > MAX_IMAGE_BYTES) return toast("A foto deve ter no máximo 15 MB", true);
+
+      const submit = form.querySelector('button[type="submit"]');
+      submit.disabled = true;
       try {
-        await window.api.post(`/restaurants/${restaurant.id}/menu`, {
+        const dish = await window.api.post(`/restaurants/${restaurant.id}/dishes`, {
           name: data.name,
           price: Number(data.price),
+          category: data.category || undefined,
           description: data.description || undefined
         });
-        toast("Item adicionado");
+        // Prato é a operação principal; se a foto falhar, o prato continua cadastrado
+        if (photo) {
+          try {
+            await uploadWithCheck(`/dishes/${dish.id}/image`, photo, "POST");
+            toast(`Prato adicionado com foto: ${dish.name}`);
+          } catch (error) {
+            toast(`Prato adicionado sem foto (${error.message}). Envie a foto pelo botão do prato.`, true);
+          }
+        } else {
+          toast(`Prato adicionado: ${dish.name}`);
+        }
         refresh();
+      } catch (error) {
+        toast(error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    area.querySelectorAll("[data-dish-photo]").forEach((input) =>
+      input.addEventListener("change", async () => {
+        const file = input.files[0];
+        if (!file) return;
+        try {
+          await uploadWithCheck(`/dishes/${input.dataset.dishPhoto}/image`, file, "POST");
+          toast("Foto do prato atualizada");
+          refresh();
+        } catch (error) {
+          toast(error.message, true);
+        }
+      })
+    );
+  }
+
+  // ------------------------------------------------------------------ perfil do usuário
+  async function renderProfile() {
+    if (!session.token) {
+      view.innerHTML = `<div class="empty">Entre na sua conta para ver o seu perfil.</div>`;
+      openAuth("login");
+      return;
+    }
+    const me = await window.api.get("/auth/me");
+    window.api.setSession(session.token, me); // mantém o avatar do topo sincronizado
+    renderNav();
+
+    view.innerHTML = `
+      <h1>Meu perfil</h1>
+      <section class="card profile-card">
+        ${userAvatar(me, "profile-photo")}
+        <div class="profile-info">
+          <h2>${esc(me.name)}</h2>
+          <p class="muted">${esc(me.email)}</p>
+          <p class="muted">Cliente desde ${new Date(me.createdAt).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
+          <div class="actions">
+            <label class="btn btn-primary file-btn">
+              ${me.imageUrl ? "Trocar foto" : "Adicionar foto"}
+              <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp" hidden />
+            </label>
+            ${me.imageUrl ? `<button class="btn btn-danger" id="profile-photo-remove">Remover foto</button>` : ""}
+          </div>
+          <p class="hint">JPEG, PNG ou WebP até 15 MB. A foto é redimensionada para no máximo 800 px de largura e convertida para WebP.</p>
+        </div>
+      </section>`;
+
+    view.querySelector("#profile-photo-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const updated = await uploadWithCheck("/auth/me/image", file, "POST");
+        window.api.setSession(session.token, updated);
+        toast("Foto de perfil atualizada");
+        renderProfile();
+      } catch (error) {
+        toast(error.message, true);
+      }
+    });
+    view.querySelector("#profile-photo-remove")?.addEventListener("click", async () => {
+      try {
+        await window.api.del("/auth/me/image");
+        toast("Foto de perfil removida");
+        renderProfile();
       } catch (error) {
         toast(error.message, true);
       }

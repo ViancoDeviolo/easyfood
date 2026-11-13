@@ -7,7 +7,14 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
 // imageFiles é opcional: quando presente, os arquivos da foto são apagados junto com o restaurante
-function createRestaurantService({ restaurants, orders, imageFiles = { discard: async () => {} } }) {
+// dishImages é opcional: lista e apaga as fotos dos pratos quando o restaurante é removido
+// (o ON DELETE CASCADE apaga as linhas do cardápio, mas não os arquivos no storage)
+function createRestaurantService({
+  restaurants,
+  orders,
+  imageFiles = { discard: async () => {} },
+  dishImages = { list: async () => [], discard: async () => {} }
+}) {
   async function list({ search, category, page = 1, limit = DEFAULT_PAGE_SIZE } = {}) {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
     const safePage = Math.max(page, 1);
@@ -59,8 +66,10 @@ function createRestaurantService({ restaurants, orders, imageFiles = { discard: 
       throw new ConflictError("Restaurante possui pedidos e não pode ser removido");
     }
     const image = await restaurants.findImage(id);
+    const dishImageUrls = await dishImages.list(id);
     await restaurants.remove(id);
     await imageFiles.discard(image?.imageId);
+    await dishImages.discard(dishImageUrls);
   }
 
   return { list, listCategories, listByOwner, getById, getOwnedRestaurant, create, update, remove };

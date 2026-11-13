@@ -37,6 +37,8 @@ function createMemoryMenuItemRepository() {
       restaurantId: data.restaurantId,
       name: data.name,
       description: data.description ?? null,
+      category: data.category ?? null,
+      imageUrl: null,
       price: data.price,
       available: data.available,
       createdAt: now,
@@ -50,7 +52,7 @@ function createMemoryMenuItemRepository() {
     const item = items.find((menuItem) => menuItem.id === id);
     if (!item) return null;
     if (fields.name !== undefined) ensureUniqueName(item.restaurantId, fields.name, id);
-    for (const field of ["name", "description", "price", "available"]) {
+    for (const field of ["name", "description", "category", "price", "available", "imageUrl"]) {
       if (fields[field] !== undefined) item[field] = fields[field];
     }
     item.updatedAt = new Date();

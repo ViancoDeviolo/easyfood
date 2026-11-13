@@ -53,6 +53,12 @@ class UnsupportedMediaTypeError extends AppError {
   }
 }
 
+class UnprocessableEntityError extends AppError {
+  constructor(message = "Não foi possível processar o conteúdo enviado") {
+    super(message, 422);
+  }
+}
+
 class ServiceUnavailableError extends AppError {
   constructor(message = "Serviço temporariamente indisponível") {
     super(message, 503);
@@ -68,5 +74,6 @@ module.exports = {
   ConflictError,
   PayloadTooLargeError,
   UnsupportedMediaTypeError,
+  UnprocessableEntityError,
   ServiceUnavailableError
 };

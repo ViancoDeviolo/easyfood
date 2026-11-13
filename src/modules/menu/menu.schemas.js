@@ -3,6 +3,7 @@
 const menuItemSchema = {
   name: { type: "string", required: true, minLength: 2, maxLength: 150 },
   description: { type: "string", maxLength: 500 },
+  category: { type: "string", maxLength: 100 },
   price: { type: "number", required: true, min: 0.01, max: 99999999.99, decimals: 2 },
   available: { type: "boolean", default: true }
 };

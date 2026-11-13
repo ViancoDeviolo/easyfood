@@ -12,5 +12,6 @@ Um ADR não é apagado quando a decisão muda. Ele recebe o status *Substituída
 | [005](ADR-005-autenticacao-jwt.md) | Autenticar usuários com JWT próprio | Aceita |
 | [006](ADR-006-comunicacao-sincrona.md) | Não adotar arquitetura orientada a eventos neste momento | Aceita (atualizada pela 007) |
 | [007](ADR-007-processamento-de-imagens-serverless.md) | Processar as fotos dos restaurantes com uma função serverless | Aceita |
+| [008](ADR-008-servico-de-imagens-compartilhado.md) | Serviço de imagens compartilhado (Multer + Sharp) para perfil e pratos | Aceita |
 
 Modelo usado em todos: **Contexto → Alternativas → Decisão → Justificativa → Consequências (positivas e negativas) → Critérios de revisão**.
